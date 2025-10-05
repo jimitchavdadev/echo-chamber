@@ -40,6 +40,11 @@ func main() {
 	{
 		protected.GET("/me", api.GetCurrentUser)
  		protected.PUT("/profile", api.UpdateCurrentUserProfile)
+		protected.POST("/users/:id/follow", api.FollowUser)
+		protected.DELETE("/users/:id/unfollow", api.UnfollowUser)
+		protected.GET("/feed", api.GetFeed)
+		protected.POST("/posts", api.CreatePost)
+		protected.POST("/posts", api.CreatePost)
 		// Add other protected routes here later (e.g., update profile)
 	}
 	

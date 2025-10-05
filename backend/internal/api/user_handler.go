@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zoro/echo-chamber/backend/internal/database"
@@ -36,4 +37,71 @@ func UpdateCurrentUserProfile(c *gin.Context) {
 	database.DB.Save(&user)
 
 	c.JSON(http.StatusOK, gin.H{"user": gin.H{"id": user.ID, "username": user.Username, "email": user.Email, "bio": user.Bio}})
+}
+
+// FollowUser creates a follow relationship
+func FollowUser(c *gin.Context) {
+	currentUserID, _ := c.Get("userID")
+	
+	targetUserIDStr := c.Param("id")
+	targetUserID, err := strconv.ParseUint(targetUserIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	if currentUserID.(uint) == uint(targetUserID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You cannot follow yourself"})
+		return
+	}
+
+	// Check if user exists
+	var targetUser models.User
+	if err := database.DB.First(&targetUser, targetUserID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User to follow not found"})
+		return
+	}
+
+	follow := models.Follower{
+		FollowerID:  currentUserID.(uint),
+		FollowingID: uint(targetUserID),
+	}
+
+	// Use FirstOrCreate to prevent duplicate follow entries
+	result := database.DB.Where(follow).FirstOrCreate(&follow)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not follow user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully followed user"})
+}
+
+// UnfollowUser removes a follow relationship
+func UnfollowUser(c *gin.Context) {
+	currentUserID, _ := c.Get("userID")
+
+	targetUserIDStr := c.Param("id")
+	targetUserID, err := strconv.ParseUint(targetUserIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	follow := models.Follower{
+		FollowerID:  currentUserID.(uint),
+		FollowingID: uint(targetUserID),
+	}
+
+	result := database.DB.Where(follow).Delete(&models.Follower{})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not unfollow user"})
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "You are not following this user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Successfully unfollowed user"})
 }
