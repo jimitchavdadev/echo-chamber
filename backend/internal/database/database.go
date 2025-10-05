@@ -34,8 +34,16 @@ func ConnectDatabase() {
 	}
 
 	log.Println("Running Migrations")
-	// This is the fully corrected line with all models
-	database.AutoMigrate(&models.User{}, &models.Post{}, &models.Follower{}, &models.Comment{}, &models.Like{})
+	// This is the fully corrected line with all models from all phases
+	database.AutoMigrate(
+		&models.User{}, 
+		&models.Post{}, 
+		&models.Follower{}, 
+		&models.Comment{}, 
+		&models.Like{}, 
+		&models.Notification{}, 
+		&models.ChatMessage{},
+	)
 
 	DB = database
 }

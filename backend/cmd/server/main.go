@@ -7,12 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/zoro/echo-chamber/backend/internal/api"
 	"github.com/zoro/echo-chamber/backend/internal/database"
+	"github.com/zoro/echo-chamber/backend/internal/websocket"
 )
 
 func main() {
 	database.ConnectDatabase()
-	r := gin.Default()
+	
+	// Run the WebSocket hub in a separate goroutine
+	go websocket.HubInstance.Run()
 
+	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -21,25 +25,18 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// --- Route Groups ---
-	
-	// Group for all API routes
 	apiGroup := r.Group("/api")
-
-	// Public routes that DO NOT need to know about the user
 	apiGroup.POST("/register", api.Register)
 	apiGroup.POST("/login", api.Login)
 	apiGroup.POST("/logout", api.Logout)
 	apiGroup.GET("/posts/:id/comments", api.GetCommentsForPost)
 	
-	// Public routes that CAN be enhanced by knowing the user (optional auth)
 	apiGroup.Use(api.MaybeAuthMiddleware())
 	{
 		apiGroup.GET("/users/:username", api.GetUserByUsername)
 		apiGroup.GET("/posts/:id", api.GetPost)
 	}
 
-	// Protected routes that REQUIRE a user to be logged in
 	protected := apiGroup.Group("/")
 	protected.Use(api.AuthMiddleware())
 	{
@@ -53,6 +50,8 @@ func main() {
 		protected.POST("/posts/:id/comments", api.CreateComment)
 		protected.POST("/posts/:id/like", api.LikePost)
 		protected.DELETE("/posts/:id/like", api.UnlikePost)
+		// Add the WebSocket endpoint
+		protected.GET("/ws", api.ServeWs)
 	}
 
 	log.Println("Starting server on port 8080...")
