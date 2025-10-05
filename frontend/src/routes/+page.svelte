@@ -4,12 +4,23 @@
   import type { PageData } from './$types';
   import { intersectionObserver } from '$lib/actions/intersectionObserver';
   import Loader from '$lib/components/ui/Loader.svelte';
+  import CreatePostForm from '$lib/components/post/CreatePostForm.svelte';
 
   export let data: PageData;
   
   let posts = data.posts || [];
   let isLoading = false;
-  let allPostsLoaded = posts.length < 10; // If initial fetch is less than a full page, we're done
+  let allPostsLoaded = posts.length < 10;
+
+  // Listen for the custom postCreated event from the form
+  function handlePostCreated(event: CustomEvent) {
+    posts = [event.detail, ...posts];
+  }
+
+  // Listen for the custom postDeleted event from the Post component
+  function handlePostDeleted(event: CustomEvent) {
+    posts = posts.filter(p => p.ID !== event.detail);
+  }
 
   async function loadMorePosts() {
     if (isLoading || allPostsLoaded) return;
@@ -27,7 +38,6 @@
         allPostsLoaded = true;
       }
     } else {
-      // Handle error or stop trying
       allPostsLoaded = true;
     }
     isLoading = false;
@@ -36,13 +46,13 @@
 
 <div class="container mx-auto max-w-2xl p-4 md:p-8">
   {#if $authStore.user}
-    <div class="bg-white p-4 rounded-lg shadow-sm border mb-8">
-      <h2 class="text-lg font-semibold">Home</h2>
-    </div>
+    <CreatePostForm on:postCreated={handlePostCreated} />
+
+    <h2 class="text-lg font-semibold border-b pb-2 mb-2">Your Feed</h2>
 
     {#if posts.length > 0}
       {#each posts as post (post.ID)}
-        <Post {post} />
+        <Post {post} on:postDeleted={handlePostDeleted} />
       {/each}
 
       {#if !allPostsLoaded}
@@ -57,7 +67,7 @@
     {:else}
       <div class="text-center text-gray-500 p-8">
         <h3 class="text-xl font-semibold">Your feed is empty</h3>
-        <p>Follow some users to see their posts here.</p>
+        <p>Follow some users or create your first post.</p>
       </div>
     {/if}
 
