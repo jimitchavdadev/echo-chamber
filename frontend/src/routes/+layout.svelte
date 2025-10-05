@@ -1,57 +1,24 @@
-<script>
-	import Header from './Header.svelte';
-	import '../app.css';
+<script lang="ts">
+  import { page } from '$app/stores';
+  import { authStore } from '$lib/stores/auth';
+  import Header from '$lib/components/layout/Header.svelte';
+  import '../app.css';
 
-	let { children } = $props();
+  // This reactive statement is the key to persistence.
+  // It runs whenever the page data from the server changes.
+  // It ensures our client-side store is always in sync with the server's session state.
+  $: {
+    if ($page.data.user) {
+      authStore.set({ user: $page.data.user });
+    } else {
+      authStore.set({ user: null });
+    }
+  }
 </script>
 
-<div class="app">
-	<Header></Header>
-
-	<main>
-		{@render children()}
-	</main>
-
-	<footer>
-		<p>
-			visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to learn about SvelteKit
-		</p>
-	</footer>
+<div class="min-h-screen bg-gray-50">
+  <Header />
+  <main>
+    <slot />
+  </main>
 </div>
-
-<style>
-	.app {
-		display: flex;
-		flex-direction: column;
-		min-height: 100vh;
-	}
-
-	main {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		padding: 1rem;
-		width: 100%;
-		max-width: 64rem;
-		margin: 0 auto;
-		box-sizing: border-box;
-	}
-
-	footer {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-		padding: 12px;
-	}
-
-	footer a {
-		font-weight: bold;
-	}
-
-	@media (min-width: 480px) {
-		footer {
-			padding: 12px 0;
-		}
-	}
-</style>

@@ -1,16 +1,47 @@
-// backend/cmd/server/main.go
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/zoro/echo-chamber/backend/internal/api"
+	"github.com/zoro/echo-chamber/backend/internal/database"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"log"
+)
 
 func main() {
+	// Load environment variables from .env file
+	// godotenv.Load() is now called inside ConnectDatabase
+
+	// Initialize Database
+	database.ConnectDatabase()
+
 	r := gin.Default()
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
+	// CORS Middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
-	r.Run() // listens and serves on 0.0.0.0:8080 by default
+	// Public routes
+	public := r.Group("/api")
+	{
+		public.POST("/register", api.Register)
+		public.POST("/login", api.Login)
+		public.POST("/logout", api.Logout)
+	}
+
+	// Protected routes
+	protected := r.Group("/api")
+	protected.Use(api.AuthMiddleware())
+	{
+		protected.GET("/me", api.GetCurrentUser)
+		// Add other protected routes here later (e.g., update profile)
+	}
+	
+	log.Println("Starting server on port 8080...")
+	r.Run(":8080")
 }
