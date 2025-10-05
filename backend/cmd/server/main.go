@@ -1,17 +1,15 @@
 package main
 
 import (
-	"github.com/zoro/echo-chamber/backend/internal/api"
-	"github.com/zoro/echo-chamber/backend/internal/database"
+	"log"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"log"
+	"github.com/zoro/echo-chamber/backend/internal/api"
+	"github.com/zoro/echo-chamber/backend/internal/database"
 )
 
 func main() {
-	// Load environment variables from .env file
-	// godotenv.Load() is now called inside ConnectDatabase
-
 	// Initialize Database
 	database.ConnectDatabase()
 
@@ -32,6 +30,7 @@ func main() {
 		public.POST("/register", api.Register)
 		public.POST("/login", api.Login)
 		public.POST("/logout", api.Logout)
+		public.GET("/users/:username", api.GetUserByUsername)
 	}
 
 	// Protected routes
@@ -39,10 +38,13 @@ func main() {
 	protected.Use(api.AuthMiddleware())
 	{
 		protected.GET("/me", api.GetCurrentUser)
- 		protected.PUT("/profile", api.UpdateCurrentUserProfile)
-		// Add other protected routes here later (e.g., update profile)
+		protected.PUT("/profile", api.UpdateCurrentUserProfile)
+		protected.POST("/users/:id/follow", api.FollowUser)
+		protected.DELETE("/users/:id/unfollow", api.UnfollowUser)
+		protected.GET("/feed", api.GetFeed)
+		protected.POST("/posts", api.CreatePost)
 	}
-	
+
 	log.Println("Starting server on port 8080...")
 	r.Run(":8080")
 }

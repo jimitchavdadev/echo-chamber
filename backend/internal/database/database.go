@@ -1,3 +1,4 @@
+// backend/internal/database/database.go
 package database
 
 import (
@@ -5,10 +6,10 @@ import (
 	"log"
 	"os"
 
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"github.com/joho/godotenv"
 	"github.com/zoro/echo-chamber/backend/internal/models"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
@@ -34,7 +35,7 @@ func ConnectDatabase() {
 	}
 
 	log.Println("Running Migrations")
-	database.AutoMigrate(&models.User{})
+	database.AutoMigrate(&models.User{}, &models.Post{}, &models.Follower{})
 
 	DB = database
 }
