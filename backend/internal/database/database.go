@@ -1,4 +1,3 @@
-// backend/internal/database/database.go
 package database
 
 import (
@@ -35,7 +34,8 @@ func ConnectDatabase() {
 	}
 
 	log.Println("Running Migrations")
-	database.AutoMigrate(&models.User{}, &models.Post{}, &models.Follower{})
+	// This is the fully corrected line with all models
+	database.AutoMigrate(&models.User{}, &models.Post{}, &models.Follower{}, &models.Comment{}, &models.Like{})
 
 	DB = database
 }

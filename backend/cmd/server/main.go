@@ -10,12 +10,9 @@ import (
 )
 
 func main() {
-	// Initialize Database
 	database.ConnectDatabase()
-
 	r := gin.Default()
 
-	// CORS Middleware
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -24,17 +21,26 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	// Public routes
-	public := r.Group("/api")
+	// --- Route Groups ---
+	
+	// Group for all API routes
+	apiGroup := r.Group("/api")
+
+	// Public routes that DO NOT need to know about the user
+	apiGroup.POST("/register", api.Register)
+	apiGroup.POST("/login", api.Login)
+	apiGroup.POST("/logout", api.Logout)
+	apiGroup.GET("/posts/:id/comments", api.GetCommentsForPost)
+	
+	// Public routes that CAN be enhanced by knowing the user (optional auth)
+	apiGroup.Use(api.MaybeAuthMiddleware())
 	{
-		public.POST("/register", api.Register)
-		public.POST("/login", api.Login)
-		public.POST("/logout", api.Logout)
-		public.GET("/users/:username", api.GetUserByUsername)
+		apiGroup.GET("/users/:username", api.GetUserByUsername)
+		apiGroup.GET("/posts/:id", api.GetPost)
 	}
 
-	// Protected routes
-	protected := r.Group("/api")
+	// Protected routes that REQUIRE a user to be logged in
+	protected := apiGroup.Group("/")
 	protected.Use(api.AuthMiddleware())
 	{
 		protected.GET("/me", api.GetCurrentUser)
@@ -43,6 +49,10 @@ func main() {
 		protected.DELETE("/users/:id/unfollow", api.UnfollowUser)
 		protected.GET("/feed", api.GetFeed)
 		protected.POST("/posts", api.CreatePost)
+		protected.DELETE("/posts/:id", api.DeletePost)
+		protected.POST("/posts/:id/comments", api.CreateComment)
+		protected.POST("/posts/:id/like", api.LikePost)
+		protected.DELETE("/posts/:id/like", api.UnlikePost)
 	}
 
 	log.Println("Starting server on port 8080...")
