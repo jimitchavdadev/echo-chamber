@@ -39,6 +39,7 @@ func main() {
 	protected.Use(api.AuthMiddleware())
 	{
 		protected.GET("/me", api.GetCurrentUser)
+ 		protected.PUT("/profile", api.UpdateCurrentUserProfile)
 		// Add other protected routes here later (e.g., update profile)
 	}
 	

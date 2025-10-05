@@ -2,14 +2,17 @@
   import { authStore } from '$lib/stores/auth';
 
   async function handleLogout() {
-    // 1. Tell the backend to clear the HttpOnly cookie
-    await fetch('http://localhost:8080/api/logout', { method: 'POST' });
+    // 1. Tell the backend to clear the HttpOnly cookie, INCLUDING CREDENTIALS
+    await fetch('http://localhost:8080/api/logout', { 
+      method: 'POST',
+      credentials: 'include', // <-- THE FIX
+    });
 
     // 2. Clear the user from our client-side store
     authStore.set({ user: null });
 
-    // 3. Force a full page navigation to the login page to ensure a clean state
-    window.location.href = '/login';
+    // 3. Force a full page navigation to the homepage to ensure a clean state
+    window.location.href = '/';
   }
 </script>
 
@@ -19,6 +22,7 @@
     <div class="flex items-center space-x-4">
       {#if $authStore.user}
         <span>Welcome, {$authStore.user.username}</span>
+        <a href="/profile/edit" class="text-gray-600 hover:text-gray-800 transition">Edit Profile</a>
         <button on:click={handleLogout} class="px-4 py-2 text-sm text-white bg-red-500 rounded hover:bg-red-600">
           Logout
         </button>
