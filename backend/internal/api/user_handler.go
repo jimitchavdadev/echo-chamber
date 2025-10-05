@@ -105,3 +105,37 @@ func UnfollowUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Successfully unfollowed user"})
 }
+
+type UserProfileResponse struct {
+	ID          uint   `json:"id"`
+	Username    string `json:"username"`
+	Bio         string `json:"bio"`
+	IsFollowing bool   `json:"isFollowing"`
+}
+
+// GetUserByUsername finds a user by their username for public profiles
+func GetUserByUsername(c *gin.Context) {
+	username := c.Param("username")
+	var user models.User
+	if err := database.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	response := UserProfileResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Bio:      user.Bio,
+	}
+
+	// Check if the request is from an authenticated user
+	currentUserID, exists := c.Get("userID")
+	if exists {
+		// If authenticated, check the follow status
+		var follow models.Follower
+		err := database.DB.Where("follower_id = ? AND following_id = ?", currentUserID, user.ID).First(&follow).Error
+		response.IsFollowing = err == nil // isFollowing is true if a record was found
+	}
+
+	c.JSON(http.StatusOK, response)
+}
