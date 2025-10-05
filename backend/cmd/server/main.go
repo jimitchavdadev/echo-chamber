@@ -52,6 +52,9 @@ func main() {
 		protected.DELETE("/posts/:id/like", api.UnlikePost)
 		// Add the WebSocket endpoint
 		protected.GET("/ws", api.ServeWs)
+		protected.GET("/chat/conversations", api.GetConversations)
+		protected.GET("/chat/history/:userId", api.GetChatHistory)
+		protected.GET("/users/search", api.SearchUsers)
 	}
 
 	log.Println("Starting server on port 8080...")
