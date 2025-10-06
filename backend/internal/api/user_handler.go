@@ -55,7 +55,6 @@ func FollowUser(c *gin.Context) {
 		return
 	}
 
-	// Check if user exists
 	var targetUser models.User
 	if err := database.DB.First(&targetUser, targetUserID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User to follow not found"})
@@ -67,7 +66,6 @@ func FollowUser(c *gin.Context) {
 		FollowingID: uint(targetUserID),
 	}
 
-	// Use FirstOrCreate to prevent duplicate follow entries
 	result := database.DB.Where(follow).FirstOrCreate(&follow)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not follow user"})
@@ -94,11 +92,7 @@ func UnfollowUser(c *gin.Context) {
 	}
 
 	result := database.DB.Where(follow).Delete(&models.Follower{})
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not unfollow user"})
-		return
-	}
-	if result.RowsAffected == 0 {
+	if result.Error != nil || result.RowsAffected == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "You are not following this user"})
 		return
 	}
@@ -128,14 +122,30 @@ func GetUserByUsername(c *gin.Context) {
 		Bio:      user.Bio,
 	}
 
-	// Check if the request is from an authenticated user
 	currentUserID, exists := c.Get("userID")
 	if exists {
-		// If authenticated, check the follow status
 		var follow models.Follower
 		err := database.DB.Where("follower_id = ? AND following_id = ?", currentUserID, user.ID).First(&follow).Error
-		response.IsFollowing = err == nil // isFollowing is true if a record was found
+		response.IsFollowing = err == nil
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// SearchUsers finds users by username (case-insensitive)
+func SearchUsers(c *gin.Context) {
+	query := c.Query("q")
+	currentUserID, _ := c.Get("userID")
+
+	if query == "" {
+		c.JSON(http.StatusOK, []models.User{})
+		return
+	}
+
+	var users []models.User
+	// Use ILIKE for case-insensitive search in PostgreSQL
+	searchQuery := "%" + query + "%"
+	database.DB.Where("username ILIKE ? AND id != ?", searchQuery, currentUserID).Limit(5).Find(&users)
+
+	c.JSON(http.StatusOK, users)
 }

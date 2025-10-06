@@ -7,39 +7,46 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/zoro/echo-chamber/backend/internal/database"
 	"github.com/zoro/echo-chamber/backend/internal/models"
+	"github.com/zoro/echo-chamber/backend/internal/websocket"
 )
 
 func LikePost(c *gin.Context) {
 	postIDStr := c.Param("id")
-	postID, err := strconv.ParseUint(postIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+	postID, _ := strconv.ParseUint(postIDStr, 10, 32)
+	currentUserID, _ := c.Get("userID")
+
+	// Find the post to get the author's ID
+	var post models.Post
+	if err := database.DB.First(&post, postID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
 		return
 	}
-
-	currentUserID, _ := c.Get("userID")
 
 	like := models.Like{
 		PostID: uint(postID),
 		UserID: currentUserID.(uint),
 	}
+	
+	result := database.DB.Where(like).FirstOrCreate(&like)
 
-	// Use FirstOrCreate. This will find an existing like or create a new one.
-	// We will ignore the error here because the most common error is a "duplicate key"
-	// violation, which is acceptable in this case (the post is already liked).
-	database.DB.Where(like).FirstOrCreate(&like)
+	// If the like was newly created (not found before)
+	if result.RowsAffected > 0 && post.UserID != currentUserID.(uint) {
+		notification := models.Notification{
+			UserID:   post.UserID, // Notify the author of the post
+			ActorID:  currentUserID.(uint),
+			Type:     models.NotificationTypeLike,
+			EntityID: uint(postID),
+		}
+		database.DB.Create(&notification)
+		websocket.HubInstance.SendNotification(&notification)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Post liked successfully"})
 }
 
 func UnlikePost(c *gin.Context) {
 	postIDStr := c.Param("id")
-	postID, err := strconv.ParseUint(postIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
-		return
-	}
-
+	postID, _ := strconv.ParseUint(postIDStr, 10, 32)
 	currentUserID, _ := c.Get("userID")
 
 	like := models.Like{
@@ -52,6 +59,9 @@ func UnlikePost(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "You have not liked this post"})
 		return
 	}
+	// Also delete the corresponding notification
+	database.DB.Where("type = ? AND actor_id = ? AND entity_id = ?", models.NotificationTypeLike, currentUserID, postID).Delete(&models.Notification{})
+
 
 	c.JSON(http.StatusOK, gin.H{"message": "Post unliked successfully"})
 }
